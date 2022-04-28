@@ -48,7 +48,7 @@ bool sortid(t_entity a, t_entity b)
 
 bool sortnear(t_entity a, t_entity b)
 {
-	return (a.near_base < b.near_base);
+	return (a.near_base > b.near_base);
 }
 
 int	ft_dist(int xa, int ya, int xb, int yb)
@@ -56,7 +56,46 @@ int	ft_dist(int xa, int ya, int xb, int yb)
 	return (sqrt(pow(xa - xb, 2) + pow(ya - yb, 2)));
 }
 
-void	ft_hero0(vector<t_entity> spiders, t_entity *hero, int my_mana, int other_base_x, int other_base_y, int use_control)
+void	ft_barycentre(vector<t_entity> spiders, t_entity *hero, t_entity target)
+{
+	std::vector<t_entity>	casualties;
+	int	i;
+
+	for (i = 0; i < spiders.size(); ++i)
+	{
+		if (ft_dist(hero->x, hero->y, spiders.at(i).x, spiders.at(i).y) <= 1600 
+			&& ft_dist(target.x, target.y, spiders.at(i).x, spiders.at(i).y) <= 1600
+			&& target.id != spiders.at(i).id)
+		{
+			casualties.push_back(spiders.at(i));
+			casualties.at(casualties.size() - 1).dist = ft_dist(hero->x, hero->y, spiders.at(i).x, spiders.at(i).y);
+		}
+	}
+	sort(casualties.begin(), casualties.end(), sortdist);
+	while (casualties.size() > 0)
+	{
+		hero->vx = target.x;
+		hero->vy = target.y;
+		for (i = 0; i < casualties.size(); ++i)
+		{
+			hero->vx += casualties.at(i).x;
+			hero->vy += casualties.at(i).y;
+		}
+		hero->vx = hero->vx / (casualties.size() + 1);
+		hero->vy = hero->vy / (casualties.size() + 1);
+		if (ft_dist(hero->vx, hero->vy, hero->x, hero->y) <= 800 && ft_dist(hero->vx, hero->vy, target.x, target.y) <= 800)
+			break;
+		casualties.pop_back();		
+	}
+	if (casualties.size() == 0)
+	{
+		hero->vx = target.x;
+		hero->vy = target.y;
+	}
+	return ;
+}
+
+void	ft_hero0(vector<t_entity> spiders, t_entity *hero, int my_mana, int base_x, int base_y, int use_control, int turn_count)
 {
 	int nb_spiders = spiders.size();
 	if (nb_spiders == 0)
@@ -74,14 +113,15 @@ void	ft_hero0(vector<t_entity> spiders, t_entity *hero, int my_mana, int other_b
 	else if (hero->dist <= 1280 && my_mana > 10 && spiders.at(0).shield_life == 0 && spiders.at(0).health > 2 && spiders.at(0).dist < 5000)
 	{
 		hero->spell = "SPELL WIND ";
-		hero->vx = other_base_x;
-		hero->vy = other_base_y;
+		hero->vx = abs(spiders.at(0).x + hero->x - base_x);
+		hero->vy = abs(spiders.at(0).y + hero->y - base_y);
 	}
 	else
 	{
 		hero->spell = hero->spell.append("MOVE ");
-		hero->vx = spiders.at(0).x;
-		hero->vy = spiders.at(0).y;
+		ft_barycentre(spiders, hero, spiders.at(0));
+		// hero->vx = spiders.at(0).x;
+		// hero->vy = spiders.at(0).y;
 	}
 	return ;
 }
@@ -117,36 +157,61 @@ void	ft_hero1(vector<t_entity> spiders, t_entity *hero, vector<t_entity> others,
 	if (nb_spiders == 0)
 		return ;
 	sort(spiders.begin(), spiders.end(), sortdist);
+	sort(spiders.begin(), spiders.end(), sortnear);
 	hero->spell = "MOVE ";
-	hero->vx = spiders.at(0).x;
-	hero->vy = spiders.at(0).y;
+	ft_barycentre(spiders, hero, spiders.at(0));
+	// hero->vx = spiders.at(0).x;
+	// hero->vy = spiders.at(0).y;
 	return ;
 }
 
 void	ft_hero2(vector<t_entity> spiders, t_entity *hero, int my_mana, int other_base_x, int other_base_y, int turn_count)
 {
 	int	nb_spiders = spiders.size();
+	int	i;
 	if (nb_spiders == 0)
 		return ;
 	sort(spiders.begin(), spiders.end(), sortdist);
-	hero->dist = ft_dist(hero->x, hero->y, spiders.at(0).x, spiders.at(0).y);
-	if (my_mana > 50 && spiders.at(0).health >= spiders.at(0).dist / 400 * 2 && spiders.at(0).dist < 400 * 12 && spiders.at(0).shield_life == 0)
+	if (my_mana > 50)
 	{
-		hero->spell = "SPELL SHIELD ";
-		hero->spell = hero->spell.append(to_string(spiders.at(0).id));
-		hero->spell = hero->spell.append(" ");
-		hero->vx = -2;
-		hero->vy = -2;
-		return ;
+		i = 0;
+		while (i < nb_spiders 
+			&& (spiders.at(i).health < (spiders.at(i).dist - 1) / 400 
+				|| spiders.at(i).dist >= 400 * 12 
+				|| spiders.at(i).shield_life != 0
+				|| ft_dist(hero->x, hero->y, spiders.at(i).x, spiders.at(i).y) > 2200))
+			i++;
+		if (i < nb_spiders)
+		{
+			hero->spell = "SPELL SHIELD ";
+			hero->spell = hero->spell.append(to_string(spiders.at(i).id));
+			hero->spell = hero->spell.append(" ");
+			hero->vx = -2;
+			hero->vy = -2;
+			return ;
+		}
+		i = 0;
+		while (i < nb_spiders 
+			&& (ft_dist(hero->x, hero->y, spiders.at(i).x, spiders.at(i).y) > 1280 
+				|| spiders.at(i).dist > 7000))
+			i++;
+		if (i < nb_spiders)
+		{
+			hero->spell = "SPELL WIND ";
+			if (turn_count % 2 == 0)
+			{
+				hero->vx = abs(2000 - other_base_x);
+				hero->vy = other_base_y;
+			}
+			else
+			{
+				hero->vx = other_base_x;
+				hero->vy = abs(2000 - other_base_y);
+			}
+			return ;
+		}
 	}
-	if (my_mana > 50 && hero->dist < 1280 && spiders.at(0).dist < 7000)
-	{
-		hero->spell = "SPELL WIND ";
-		hero->vx = other_base_x;
-		hero->vy = other_base_y;
-		return ;
-	}
-	int i = 0;
+	i = 0;
 	while (i < nb_spiders && (spiders.at(i).threat_for == 2 || spiders.at(i).shield_life != 0))
 		i++;
 	if (i == nb_spiders)
@@ -159,21 +224,22 @@ void	ft_hero2(vector<t_entity> spiders, t_entity *hero, int my_mana, int other_b
 		hero->spell = hero->spell.append(" ");
 		if (turn_count % 2 == 0)
 		{
-			hero->vx = other_base_x;
+			hero->vx = abs(4000 - other_base_x);
 			hero->vy = other_base_y;
 		}
 		else
 		{
 			hero->vx = other_base_x;
-			hero->vy = other_base_y;
+			hero->vy = abs(4000 - other_base_y);
 		}
 		return ;
 	}
 	else
 	{
 		hero->spell = "MOVE ";
-		hero->vx = spiders.at(i).x;
-		hero->vy = spiders.at(i).y;
+		ft_barycentre(spiders, hero, spiders.at(i));
+		// hero->vx = spiders.at(i).x;
+		// hero->vy = spiders.at(i).y;
 		return ;
 	}
 }
@@ -221,9 +287,9 @@ int main()
 			{
 				temp.dist = ft_dist(temp.x, temp.y, base_x, base_y);
 				spiders.push_back(temp);
-				if (temp.dist > 5000 && temp.dist < 12000)
+				if (temp.dist < 12000)
 				{
-					temp.dist = ft_dist(heroes.at(1).x, heroes.at(1).y, other_base_x, other_base_y);
+					temp.dist = ft_dist(heroes.at(1).x, heroes.at(1).y, temp.x, temp.y);
 					mid_spiders.push_back(temp);
 				}
 				else if (temp.dist >= 12000)
@@ -246,7 +312,7 @@ int main()
 				others.push_back(temp);
 			}
 		}
-		ft_hero0(spiders, &heroes.at(0), my_mana, other_base_x, other_base_y, use_control);
+		ft_hero0(spiders, &heroes.at(0), my_mana, base_x, base_y, use_control, turn_count);
 		ft_hero1(mid_spiders, &heroes.at(1), others, other_base_x, other_base_y, my_mana);
 		ft_hero2(far_spiders, &heroes.at(2), my_mana, other_base_x, other_base_y, turn_count);
 		sort(heroes.begin(), heroes.end(), sortid);
@@ -260,7 +326,7 @@ int main()
 				else if (i == 1)
 					cout << "MOVE " << floor(abs(cos(mid_angle) * 7000 - base_x)) << " " << floor(abs(sin(mid_angle) * 7000 - base_y)) << endl;
 				else
-					cout << "MOVE " << floor(abs(sin(mid_angle) * 5000 - other_base_x)) << " " << floor(abs(cos(mid_angle) * 5000 - other_base_y)) << endl;
+					cout << "MOVE " << floor(abs(cos(mid_angle) * 5000 - other_base_x)) << " " << floor(abs(sin(mid_angle) * 5000 - other_base_y)) << endl;
 			}
 			else if (heroes.at(i).vx >= 0)
 				cout << heroes.at(i).spell << heroes.at(i).vx << " " << heroes.at(i).vy << endl;
@@ -269,9 +335,9 @@ int main()
 		}
 		turn_count++;
 		mid_angle += M_PI /20 * mod_patrol;
-		if (mid_angle == M_PI / 2)
+		if (mid_angle >= (M_PI / 2) - (M_PI / 20) )
 			mod_patrol = -1;
-		if (mid_angle == 0)
+		if (mid_angle <= M_PI / 20)
 			mod_patrol = 1;
 	}
 }
