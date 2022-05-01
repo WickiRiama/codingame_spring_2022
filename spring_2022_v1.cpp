@@ -127,8 +127,8 @@ void	ft_hero0(vector<t_entity> spiders, t_entity *hero, int my_mana, int base_x,
 	else if (hero->dist <= 1280 && my_mana >= 10 && spiders.at(i).shield_life == 0 && spiders.at(i).health > 2 && spiders.at(i).dist < 3000)
 	{
 		hero->spell = "SPELL WIND ";
-		hero->vx = abs(spiders.at(i).x + hero->x - base_x);
-		hero->vy = abs(spiders.at(i).y + hero->y - base_y);
+		hero->vx = spiders.at(i).x + hero->x - base_x;
+		hero->vy = spiders.at(i).y + hero->y - base_y;
 	}
 	else
 	{
