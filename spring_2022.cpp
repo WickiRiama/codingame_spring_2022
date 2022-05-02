@@ -13,6 +13,7 @@ int mana_OK = 0;
 int together_OK = 0;
 int H1_here = 0;
 int	controlled = 0;
+int	defensive_control = 0;
 
 typedef struct s_entity
 {
@@ -233,6 +234,11 @@ void	ft_hero1(vector<t_entity> spiders, t_entity *hero, int base_x, int base_y, 
 		}
 		return ;
 	}
+	if (defensive_control == 1 && hero->shield_life == 0 && my_mana >= 20)
+	{
+		ft_shield(hero, hero->id);
+		return ;
+	}
 	int	next_x = spiders.at(0).x + spiders.at(0).vx;
 	int	next_y = spiders.at(0).y + spiders.at(0).vy;
 	double	coef = 1100.0 / ft_dist(next_x, next_y, other_base_x, other_base_y);
@@ -289,6 +295,11 @@ int	ft_hero2(vector<t_entity> spiders, vector<t_entity> others, t_entity *hero, 
 	}
 	if (together_OK == 0)
 		return (-1);
+	if (defensive_control == 1 && hero->shield_life == 0 && my_mana >= 20)
+	{
+		ft_shield(hero, hero->id);
+		return (-1);
+	}
 	int	next_x = spiders.at(0).x + spiders.at(0).vx;
 	int	next_y = spiders.at(0).y + spiders.at(0).vy;
 	double	coef = 1100.0 / ft_dist(next_x, next_y, other_base_x, other_base_y);
@@ -317,7 +328,7 @@ int	ft_hero2(vector<t_entity> spiders, vector<t_entity> others, t_entity *hero, 
 	}
 	else if ((spiders.at(0).dist_obase <= 4700 || old_target == 2) && spiders.at(0).dist_hero[2] <= 1280 && my_mana >= 20 && ft_dist(next_x, next_y, other_base_x, other_base_y) < 6900)
 		ft_wind(hero, hero->x - spiders.at(0).x + other_base_x, hero->y - spiders.at(0).y + other_base_y);
-	else if (spiders.at(0).dist_hero[2] < 2200 && spiders.at(0).dist_obase > hero->dist_obase && spiders.at(0).shield_life == 0 && my_mana > 50)
+	else if (spiders.at(0).dist_hero[2] < 2200 && spiders.at(0).dist_obase > hero->dist_obase && spiders.at(0).shield_life == 0 && my_mana > 50 && spiders.at(0).dist_obase < 7880)
 		ft_control(hero, spiders.at(0).id, hero->x, hero->y);
 	return (-1);
 }
@@ -349,6 +360,8 @@ int main()
 				my_mana = mana;
 				if (my_mana >= 100)
 					mana_OK = 1;
+				if (my_mana >= 250)
+					defensive_control = 1;
 		}
 		int entity_count; // Amount of heros and monsters you can see
 		cin >> entity_count; cin.ignore();
@@ -381,7 +394,7 @@ int main()
 			{
 				temp.vx = -1;
 				temp.vy = -1;
-				if (temp.is_controlled == 1)
+				if (temp.id % 3 == 0 && temp.is_controlled == 1)
 					use_control = 1;
 				heroes.push_back(temp);
 			}
