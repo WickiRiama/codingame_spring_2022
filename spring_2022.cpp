@@ -13,7 +13,6 @@ int mana_OK = 0;
 int together_OK = 0;
 int H1_here = 0;
 int	controlled = 0;
-int	defensive_control = 0;
 
 typedef struct s_entity
 {
@@ -160,7 +159,7 @@ void	ft_control(t_entity *hero, int id, int x, int y)
 	return ;
 }
 
-void	ft_hero0(vector<t_entity> spiders, vector<t_entity> others, t_entity *hero, int my_mana, int base_x, int base_y, int other_base_x, int other_base_y, int use_control, int turn_count)
+void	ft_hero0(vector<t_entity> spiders, vector<t_entity> others, t_entity *hero, int my_mana, int base_x, int base_y, int use_control, int turn_count)
 {
 	int nb_spiders = spiders.size();
 	int nb_others = others.size();
@@ -170,7 +169,7 @@ void	ft_hero0(vector<t_entity> spiders, vector<t_entity> others, t_entity *hero,
 	if (nb_spiders == 0)
 		return;
 	sort(spiders.begin(), spiders.end(), sortdist_mybase);
-	sort(spiders.begin(), spiders.end(), sortnear);
+	sort(spiders.begin(), spiders.end(), sortthreat);
 	sort(others.begin(), others.end(), sortdist_mybase);
 	if (nb_others != 0 && others.at(0).dist_mybase < 6000)
 		dist_crit = 2600;
@@ -187,12 +186,7 @@ void	ft_hero0(vector<t_entity> spiders, vector<t_entity> others, t_entity *hero,
 		&& spiders.at(i).shield_life == 0
 		&& spiders.at(i).health > 2
 		&& spiders.at(i).dist_mybase < dist_crit)
-	{
-		if (spiders.at(i).dist_mybase > 2800)
-			ft_wind(hero, spiders.at(i).x + hero->x - base_x, spiders.at(i).y + hero->y - base_y);
-		else
-			ft_wind(hero, other_base_x, other_base_y);
-	}
+		ft_wind(hero, spiders.at(i).x + hero->x - base_x, spiders.at(i).y + hero->y - base_y);
 	else
 	{
 		cerr << "target H0:" << spiders.at(i).id << endl;
@@ -234,15 +228,10 @@ void	ft_hero1(vector<t_entity> spiders, t_entity *hero, int base_x, int base_y, 
 		}
 		return ;
 	}
-	if (defensive_control == 1 && hero->shield_life == 0 && my_mana >= 20)
-	{
-		ft_shield(hero, hero->id);
-		return ;
-	}
 	int	next_x = spiders.at(0).x + spiders.at(0).vx;
 	int	next_y = spiders.at(0).y + spiders.at(0).vy;
 	double	coef = 1100.0 / ft_dist(next_x, next_y, other_base_x, other_base_y);
-	if (old_target < 0 && spiders.at(0).dist_hero[1] <= 1280 && my_mana >= 30 && ft_dist(next_x, next_y, other_base_x, other_base_y) < 6900 && spiders.at(0).dist_obase > 4700)
+	if (old_target < 0 && spiders.at(0).dist_hero[1] <= 1280 && my_mana >= 30 && ft_dist(next_x, next_y, other_base_x, other_base_y) < 6900 && spiders.at(0).dist_obase > 5680)
 	{
 		hero->spell = "MOVE ";
 		/*
@@ -269,7 +258,7 @@ void	ft_hero1(vector<t_entity> spiders, t_entity *hero, int base_x, int base_y, 
 		hero->vx = -1000;
 		hero->vx = -1000;
 	}
-	else if ((spiders.at(0).dist_obase <= 4700 || old_target == 2) && spiders.at(0).dist_hero[1] <= 1280 && my_mana >= 20 && ft_dist(spiders.at(0).x, spiders.at(0).y, other_base_x, other_base_y) < 6900)
+	else if ((spiders.at(0).dist_obase <= 5680 || old_target == 2) && spiders.at(0).dist_hero[1] <= 1280 && my_mana >= 20 && ft_dist(spiders.at(0).x, spiders.at(0).y, other_base_x, other_base_y) < 6900)
 		ft_wind(hero, hero->x - spiders.at(0).x + other_base_x, hero->y - spiders.at(0).y + other_base_y);
 	return ;
 }
@@ -295,16 +284,11 @@ int	ft_hero2(vector<t_entity> spiders, vector<t_entity> others, t_entity *hero, 
 	}
 	if (together_OK == 0)
 		return (-1);
-	if (defensive_control == 1 && hero->shield_life == 0 && my_mana >= 20)
-	{
-		ft_shield(hero, hero->id);
-		return (-1);
-	}
 	int	next_x = spiders.at(0).x + spiders.at(0).vx;
 	int	next_y = spiders.at(0).y + spiders.at(0).vy;
 	double	coef = 1100.0 / ft_dist(next_x, next_y, other_base_x, other_base_y);
 	cerr << "coef :" << coef << endl;
-	if (old_target < 0 && spiders.at(0).dist_hero[2] <= 1280 && my_mana >= 30 && ft_dist(next_x, next_y, other_base_x, other_base_y) < 6900 && spiders.at(0).dist_obase > 4700)
+	if (old_target < 0 && spiders.at(0).dist_hero[2] <= 1280 && my_mana >= 30 && ft_dist(next_x, next_y, other_base_x, other_base_y) < 6900 && spiders.at(0).dist_obase > hero->dist_obase)
 	{
 		hero->spell = "MOVE ";
 		if (other_base_x == 0)
@@ -326,10 +310,8 @@ int	ft_hero2(vector<t_entity> spiders, vector<t_entity> others, t_entity *hero, 
 		ft_wind(hero, hero->x - spiders.at(0).x + other_base_x, hero->y - spiders.at(0).y + other_base_y);
 		return (2);
 	}
-	else if ((spiders.at(0).dist_obase <= 4700 || old_target == 2) && spiders.at(0).dist_hero[2] <= 1280 && my_mana >= 20 && ft_dist(next_x, next_y, other_base_x, other_base_y) < 6900)
+	else if ((spiders.at(0).dist_obase < hero->dist_obase || old_target == 2) && spiders.at(0).dist_hero[2] <= 1280 && my_mana >= 20 && ft_dist(next_x, next_y, other_base_x, other_base_y) < 6900)
 		ft_wind(hero, hero->x - spiders.at(0).x + other_base_x, hero->y - spiders.at(0).y + other_base_y);
-	else if (spiders.at(0).dist_hero[2] < 2200 && spiders.at(0).dist_obase > hero->dist_obase && spiders.at(0).shield_life == 0 && my_mana > 50 && spiders.at(0).dist_obase < 7880)
-		ft_control(hero, spiders.at(0).id, hero->x, hero->y);
 	return (-1);
 }
 
@@ -360,8 +342,6 @@ int main()
 				my_mana = mana;
 				if (my_mana >= 100)
 					mana_OK = 1;
-				if (my_mana >= 250)
-					defensive_control = 1;
 		}
 		int entity_count; // Amount of heros and monsters you can see
 		cin >> entity_count; cin.ignore();
@@ -394,7 +374,7 @@ int main()
 			{
 				temp.vx = -1;
 				temp.vy = -1;
-				if (temp.id % 3 == 0 && temp.is_controlled == 1)
+				if (temp.is_controlled == 1)
 					use_control = 1;
 				heroes.push_back(temp);
 			}
@@ -413,7 +393,7 @@ int main()
 			H1_here = 1;
 		cerr << "H1_here : " << H1_here << endl;
 		cerr << "parsing OK" << endl;
-		ft_hero0(spiders, others, &heroes.at(0), my_mana, base_x, base_y, other_base_x, other_base_y, use_control, turn_count);
+		ft_hero0(spiders, others, &heroes.at(0), my_mana, base_x, base_y, use_control, turn_count);
 		cerr << "hero0 OK" << endl;
 		ft_hero1(spiders, &heroes.at(1), base_x, base_y, other_base_x, other_base_y, my_mana, turn_count, old_target);
 		cerr << "hero1 OK" << endl;
